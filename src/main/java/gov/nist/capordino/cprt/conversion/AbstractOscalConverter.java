@@ -542,6 +542,13 @@ public abstract class AbstractOscalConverter {
         return odp_param;
     }
 
+    // Builds a Part for Assessment Methods with a namespace
+    protected ControlPart buildAssessmentMethodPart(CprtElement element, String separator, String prefix, String suffix, String namespace) {
+        ControlPart part = buildAssessmentMethodPart(element, separator, prefix, suffix);
+        part.setNs(URI.create(namespace));
+        return part;
+    }
+
     // Builds a Part for Assessment Methods
     protected ControlPart buildAssessmentMethodPart(CprtElement element, String separator, String prefix, String suffix) {
         ControlPart part = new ControlPart();

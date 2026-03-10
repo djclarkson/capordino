@@ -15,6 +15,7 @@ import gov.nist.capordino.cprt.conversion.InvalidFrameworkIdentifier;
 import gov.nist.capordino.cprt.conversion.UnimplementedFrameworkIdentifier;
 import gov.nist.capordino.cprt.conversion.csf20.Csf20CprtOscalConverter;
 import gov.nist.capordino.cprt.conversion.sp_800_171.SP800171OscalConverter;
+import gov.nist.capordino.cprt.conversion.sp80053r5.Sp80053r5CprtOscalConverter;
 import gov.nist.capordino.cprt.pojo.CprtMetadataVersion;
 import gov.nist.capordino.cprt.pojo.CprtRoot;
 import gov.nist.secauto.metaschema.binding.io.Format;
@@ -27,27 +28,22 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(name = "capordino", version = "Capordino 1.1", mixinStandardHelpOptions = true) 
+@Command(name = "capordino", version = "Capordino 1.1", mixinStandardHelpOptions = true)
 public class Capordino implements Runnable {
     public final String CSF20_IDENTIFIER = "CSF_2_0_0";
     public final String SP800171_IDENTIFIER = "SP_800_171_3_0_0";
-    public final String[] IMPLEMENTED_IDENTIFIERS = {CSF20_IDENTIFIER, SP800171_IDENTIFIER};
-
-    // // File path if -f option is used
-    // @Option(names = {"-f", "--file-path"}, defaultValue = "",
-    //             description = "File path for framework json, if already downloaded from CPRT")
-    // private String filepath;
+    public final String SP80053_IDENTIFIER = "SP_800_53_5_2_0";
+    public final String[] IMPLEMENTED_IDENTIFIERS = {CSF20_IDENTIFIER, SP800171_IDENTIFIER, SP80053_IDENTIFIER};
 
     // Framework version identifier to build catalog
     @Parameters(paramLabel = "<framework version identifier>",
-                description = "REQUIRED: framework version identifier to build catalog for\n" + 
-                "Implemented: " + 
-                CSF20_IDENTIFIER + ", " + 
-                SP800171_IDENTIFIER
+                description = "REQUIRED: framework version identifier to build catalog for\n" +
+                "Implemented: " +
+                CSF20_IDENTIFIER + ", " +
+                SP800171_IDENTIFIER + ", " +
+                SP80053_IDENTIFIER
                 )
     private String framework_version_identifier;
-    // CSF_2_0_0
-    // SP_800_171_3_0_0
 
     // Output directory
     @Option(names = {"-o", "--output-directory"}, defaultValue = "./catalogs/",
@@ -55,10 +51,7 @@ public class Capordino implements Runnable {
     private String output_directory;
 
     @Override
-    public void run() { 
-        // Initialize
-        // File cprtSample = new File(filepath);
-
+    public void run() {
         OscalBindingContext bindingContext = OscalBindingContext.instance();
 
         Path tempOutDirectory = FileSystems.getDefault().getPath(output_directory);
@@ -67,8 +60,6 @@ public class Capordino implements Runnable {
 
         System.out.println("Saving output to: " + tempOutDirectory.toString());
 
-        // ObjectMapper mapper = new ObjectMapper();
-        
         //Convert CPRT to OSCAL
         CprtApiClient client = new CprtApiClient();
         CprtMetadataVersion version = new CprtMetadataVersion();
@@ -77,7 +68,7 @@ public class Capordino implements Runnable {
             if (Arrays.asList(IMPLEMENTED_IDENTIFIERS).contains(framework_version_identifier)) {
                 // Take in framework version from CLI
                 version = client.getMetadata().versions.stream().filter(v -> v.frameworkVersionIdentifier.equals(framework_version_identifier)).findFirst().orElseThrow();
-    
+
                 // Build catalog
                 AbstractOscalConverter converter = null;
                 if (framework_version_identifier.equals(CSF20_IDENTIFIER)) {
@@ -86,12 +77,15 @@ public class Capordino implements Runnable {
                 else if (framework_version_identifier.equals(SP800171_IDENTIFIER)) {
                     converter = new SP800171OscalConverter(version);
                 }
+                else if (framework_version_identifier.equals(SP80053_IDENTIFIER)) {
+                    converter = new Sp80053r5CprtOscalConverter(version);
+                }
                 else {
                     throw new UnimplementedFrameworkIdentifier(framework_version_identifier);
                 }
-                
+
                 Catalog catalog = converter.buildCatalog();
-    
+
                 // Serialize and write catalog to a file
                 ISerializer<Catalog> serializer = bindingContext.newSerializer(Format.XML, Catalog.class);
                 serializer.serialize(catalog, outFilePath);
